@@ -38,8 +38,8 @@ app.get("/hallbooking/customerlist", async(request, response) => {
             {
             res.bookingstatus.forEach(status=>{
               console.log(status.customername+"          "+res.roomname +"    "+ 
-              status.startTime.getDate()+"-"+status.startTime.getMonth()+1+"-"+status.startTime.getFullYear()+"      "
-              +status.startTime.getHours()+"      "+status.endTime.getHours())
+              status.date+"      "
+              +status.startTime+"      "+status.endTime)
               })
             }
            
@@ -63,8 +63,8 @@ app.get("/hallbooking/roomlist", async(request, response) => {
              
                 console.log(res.roomname +"      "+ 
                 "booked"+"            "+status.customername+"         "+
-                status.startTime.getDate()+"-"+status.startTime.getMonth()+1+"-"+status.startTime.getFullYear()+"      "
-                +status.startTime.getHours()+"      "+status.endTime.getHours())
+                status.date+"      "
+                +status.startTime+"      "+status.endTime)
                 })
 
             }
@@ -79,31 +79,57 @@ app.get("/hallbooking/roomlist", async(request, response) => {
            })
         });
         
-  response.send(rresult)
+  response.send(result);
 });
-app.post("/hallbooking/createroom", async(request, response) => {
-    
-    
-    const result = await client
-        .db("B27rwd")
-        .collection("hallbooking")
-        .insertMany([request.body]);
-        
-    response.send(result)
- });
- app.post("/hallbooking/bookingroom", async(request, response) => {
-    
-    const {roomname,customername,date,starttime,endtime} =request.body;
+app.get("/hallbooking/createroom", async(request, response) => {
 
-    const startTime=new Date(date+"T"+starttime+":00:00");
-    const endTime=new Date(date+"T"+endtime+":00:00");
-    console.log(startTime,endTime);
-console.log(new Date);
-let data=null;
+  const data={
+    "roomname":"hall6",
+    "seats":"150",
+    "ac":"available",
+    "restroom":"5",
+    "price":"3000",
+    "bookingstatus":[]
+    
+}
+    // const {roomname}=request.body;
+    const roomavail= await client
+              .db("B27rwd")
+              .collection("hallbooking")
+              .findOne({roomname:data.roomname});
+    console.log(roomavail) 
+   if(roomavail==null)
+   {
+    const result = await client
+    .db("B27rwd")
+    .collection("hallbooking")
+    .insertMany([data]);
+    
+    response.send(result);
+
+   }
+   else{
+    response.send({message:"room already avail"});
+   }           
+    
+ });
+ app.get("/hallbooking/bookingroom", async(request, response) => {
+    const data={
+      "roomname":"hall5",
+     "customername":"john",
+     "date":"2022-01-29",
+     "starttime":7,
+     "endtime":10
+      
+  }
+    // const {roomname,customername,date,starttime,endtime} =request.body;
+
+    
+let isbooked=null;
     const agg = [
         {
           '$match': {
-            'roomname': roomname
+            'roomname': data.roomname,
           }
         }, {
           '$unwind': {
@@ -111,16 +137,31 @@ let data=null;
           }
         }, {
           '$match': {
-            "$or":[{
-            'bookingstatus.startTime': {
-              '$lte': new Date(date+"T"+endtime+":00:00")
-            }
-          },
-          {
-            'bookingstatus.endTime': {
-              '$gte': new Date(date+"T"+starttime+":00:00")
-            }
+            'bookingstatus.date': data.date,
           }
+        },{
+          '$match': {
+            "$or":[{"$and":[{'bookingstatus.startTime': {
+              '$gte': data.endtime,
+            }},{
+              'bookingstatus.endTime': {
+                '$lte':data.starttime,
+              }
+            }]},{"$and":[{'bookingstatus.startTime': {
+              '$gte': data.starttime,
+            }},{
+              'bookingstatus.endTime': {
+                '$lte':data.endtime,
+              }
+            }]},{"$and":[{'bookingstatus.startTime': {
+              '$lte': data.endtime,
+            }},{
+              'bookingstatus.endTime': {
+                '$gte':data.starttime,
+              }
+            }]}
+            
+          
           ]}
         }
         
@@ -131,18 +172,18 @@ let data=null;
         .aggregate(agg);
 
         await result.forEach(res=>{
-         data=res;
+          isbooked=res;
         })
-        console.log(data);    
+            
      
 
-if(data==null)
+if(isbooked==null)
 {
   const result = await client
         .db("B27rwd")
         .collection("hallbooking")
-        .updateOne({roomname:roomname, },
-            { $push: { bookingstatus:{customername:customername,startTime:startTime,endTime:endTime}} });
+        .updateOne({roomname:data.roomname },
+            { $push: { bookingstatus:{customername:data.customername,date:data.date,startTime:data.starttime,endTime:data.endtime}} });
         response.send(result);
 
 }
@@ -152,17 +193,7 @@ else{
     
    
  });
- app.post("/hallbooking/check", async(request, response) => {
-   const date=new Date();
-   console.log(date);
-   console.log(date.toUTCString());
-  const result = await client
-      .db("B27rwd")
-      .collection("hallbooking")
-      .insertOne({date:new Date()})
-        response.send(result);
-
- });
+ 
 
 app.listen(PORT, () => console.log("the server is started in", PORT));
 
