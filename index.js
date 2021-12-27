@@ -81,7 +81,7 @@ app.get("/hallbooking/roomlist", async(request, response) => {
         
   response.send(result);
 });
-app.get("/hallbooking/createroom", async(request, response) => {
+app.post("/hallbooking/createroom", async(request, response) => {
 
   const data={
     "roomname":"hall6",
@@ -113,7 +113,7 @@ app.get("/hallbooking/createroom", async(request, response) => {
    }           
     
  });
- app.get("/hallbooking/bookingroom", async(request, response) => {
+ app.post("/hallbooking/bookingroom", async(request, response) => {
     const data={
       "roomname":"hall5",
      "customername":"john",
